@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.90.1-alpha.b36164786ca62a95fecbd3c42cac899f3c444b68](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.90.0...v1.90.1-alpha.b36164786ca62a95fecbd3c42cac899f3c444b68) (2020-08-19)
+
+
+### Bug Fixes
+
+* **payment:** INT-2901 Fixed Chase pay sign in link functionality ([b361647](https://github.com/bigcommerce/checkout-sdk-js/commit/b36164786ca62a95fecbd3c42cac899f3c444b68))
+
+
+### Code Refactoring
+
+* **checkout:** CHECKOUT-4947 Remove unused key from settings object ([232a2cc](https://github.com/bigcommerce/checkout-sdk-js/commit/232a2cca5866861628e2af6ccba156d8a50ccdcc))
+
 ## [1.90.0](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.89.0...v1.90.0) (2020-08-12)
 
 
