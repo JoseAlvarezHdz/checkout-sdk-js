@@ -19,7 +19,7 @@ import { ChasepayPaymentStrategy } from './strategies/chasepay';
 import { ConvergePaymentStrategy } from './strategies/converge';
 import { CreditCardPaymentStrategy } from './strategies/credit-card';
 import { CyberSourcePaymentStrategy } from './strategies/cybersource';
-import { GooglePayPaymentStrategy } from './strategies/googlepay';
+import { GooglePayAdyenPaymentStrategy, GooglePayPaymentStrategy } from './strategies/googlepay';
 import { KlarnaPaymentStrategy } from './strategies/klarna';
 import { LegacyPaymentStrategy } from './strategies/legacy';
 import { MasterpassPaymentStrategy } from './strategies/masterpass';
@@ -55,7 +55,7 @@ describe('CreatePaymentStrategyRegistry', () => {
 
     it('can instantiate googlepayadyenv2', () => {
         const paymentStrategy = registry.get(PaymentStrategyType.ADYENV2_GOOGLEPAY);
-        expect(paymentStrategy).toBeInstanceOf(GooglePayPaymentStrategy);
+        expect(paymentStrategy).toBeInstanceOf(GooglePayAdyenPaymentStrategy);
     });
 
     it('can instantiate affirm', () => {

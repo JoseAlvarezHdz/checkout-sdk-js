@@ -1,6 +1,10 @@
+import { getScriptLoader, getStylesheetLoader } from '@bigcommerce/script-loader';
+import { some } from 'lodash';
+
+import { HostedInstrument, Payment } from '../..';
 import { CheckoutActionCreator, CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
 import { getBrowserInfo } from '../../../common/browser-info';
-import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
+import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType, RequestError } from '../../../common/error/errors';
 import { bindDecorator as bind } from '../../../common/utility';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
@@ -8,33 +12,66 @@ import PaymentActionCreator from '../../payment-action-creator';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import { PaymentInitializeOptions, PaymentRequestOptions } from '../../payment-request-options';
 import PaymentStrategyActionCreator from '../../payment-strategy-action-creator';
-import { AdyenPaymentMethodType } from '../adyenv2';
+import { AdyenAction, AdyenAdditionalAction, AdyenAdditionalActionState, AdyenClient, AdyenError, AdyenPaymentMethodType, AdyenV2ScriptLoader } from '../adyenv2';
 import PaymentStrategy from '../payment-strategy';
 
 import { GooglePaymentData, PaymentMethodData } from './googlepay';
 import GooglePayPaymentInitializeOptions from './googlepay-initialize-options';
 import GooglePayPaymentProcessor from './googlepay-payment-processor';
 
-export default class GooglePayPaymentStrategy implements PaymentStrategy {
+export default class GooglePayAdyenPaymentStrategy implements PaymentStrategy {
     private _googlePayOptions?: GooglePayPaymentInitializeOptions;
     private _methodId?: string;
     private _walletButton?: HTMLElement;
+    private _adyenClient?: AdyenClient;
+    private _scriptLoader: AdyenV2ScriptLoader;
 
     constructor(
         private _store: CheckoutStore,
         private _checkoutActionCreator: CheckoutActionCreator,
+        private _googlePayPaymentProcessor: GooglePayPaymentProcessor,
         private _paymentMethodActionCreator: PaymentMethodActionCreator,
         private _paymentStrategyActionCreator: PaymentStrategyActionCreator,
         private _paymentActionCreator: PaymentActionCreator,
-        private _orderActionCreator: OrderActionCreator,
-        private _googlePayPaymentProcessor: GooglePayPaymentProcessor
-    ) {}
+        private _orderActionCreator: OrderActionCreator
+    ) {
+        const scriptLoader = getScriptLoader();
+        this._scriptLoader = new AdyenV2ScriptLoader(scriptLoader, getStylesheetLoader());
+    }
 
     initialize(options: PaymentInitializeOptions): Promise<InternalCheckoutSelectors> {
         this._methodId = options.methodId;
 
         return this._googlePayPaymentProcessor.initialize(this._methodId)
-            .then(() => {
+            .then(async () => {
+                const state = this._store.getState();
+                const paymentMethod = state.paymentMethods.getPaymentMethodOrThrow(options.methodId);
+                const storeConfig = state.config.getStoreConfig();
+
+                if (!storeConfig) {
+                    throw new MissingDataError(MissingDataErrorType.MissingCheckoutConfig);
+                }
+
+                const clientSideAuthentication = {
+                    key: '',
+                    value: '',
+                };
+
+                if (paymentMethod.initializationData.originKey) {
+                    clientSideAuthentication.key = 'originKey';
+                    clientSideAuthentication.value = paymentMethod.initializationData.originKey;
+                } else {
+                    clientSideAuthentication.key = 'clientKey';
+                    clientSideAuthentication.value = paymentMethod.initializationData.clientKey;
+                }
+
+                this._adyenClient = await this._scriptLoader.load({
+                    environment:  paymentMethod.config.testMode ? 'TEST' : ' PRODUCTION',
+                    locale: storeConfig.storeProfile.storeLanguage,
+                    [clientSideAuthentication.key]: clientSideAuthentication.value,
+                    paymentMethodsResponse: paymentMethod.initializationData.paymentMethodsResponse,
+                });
+
                 this._googlePayOptions = this._getGooglePayOptions(options);
 
                 if (!this._googlePayOptions) {
@@ -48,7 +85,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
                     this._walletButton.addEventListener('click', this._handleWalletButtonClick);
                 }
 
-                return this._store.getState();
+                return state;
             });
     }
 
@@ -67,6 +104,11 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
         if (!this._googlePayOptions) {
             throw new InvalidArgumentError('Unable to initialize payment because "options.googlepay" argument is not provided.');
         }
+
+        const { payment } = payload;
+        const paymentData = payment && payment.paymentData;
+        const shouldSaveInstrument = paymentData && (paymentData as HostedInstrument).shouldSaveInstrument;
+        const shouldSetAsDefaultInstrument = paymentData && (paymentData as HostedInstrument).shouldSetAsDefaultInstrument;
 
         const {
             onError = () => {},
@@ -93,6 +135,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             .then(() =>
                 this._store.dispatch(this._orderActionCreator.submitOrder({ useStoreCredit: payload.useStoreCredit }, options))
                     .then(() => this._store.dispatch(this._paymentActionCreator.submitPayment(this._getPayment())))
+                    .catch(error => this._processAdditionalAction(error, shouldSaveInstrument, shouldSetAsDefaultInstrument))
             );
     }
 
@@ -100,25 +143,61 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
         return Promise.reject(new OrderFinalizationNotRequiredError());
     }
 
+    private async _processAdditionalAction(error: unknown, shouldSaveInstrument?: boolean, shouldSetAsDefaultInstrument?: boolean): Promise<InternalCheckoutSelectors> {
+        if (!(error instanceof RequestError) || !some(error.body.errors, {code: 'additional_action_required'})) {
+            return Promise.reject(error);
+        }
+
+        const payment = await this._handleAction(error.body.provider_data);
+
+        try {
+            return await this._store.dispatch(this._paymentActionCreator.submitPayment({
+                ...payment,
+                paymentData: {
+                    ...payment.paymentData,
+                    shouldSaveInstrument,
+                    shouldSetAsDefaultInstrument,
+                },
+            }));
+        } catch (error) {
+            return this._processAdditionalAction(error, shouldSaveInstrument, shouldSetAsDefaultInstrument);
+        }
+    }
+
+    private _handleAction(additionalAction: AdyenAdditionalAction): Promise<Payment> {
+        return new Promise((resolve, reject) => {
+            const adyenAction: AdyenAction = JSON.parse(additionalAction.action);
+
+            const additionalActionComponent = this._getAdyenClient().createFromAction(adyenAction, {
+                onAdditionalDetails: (additionalActionState: AdyenAdditionalActionState) => {
+                    const paymentPayload = {
+                        methodId: adyenAction.paymentMethodType,
+                        paymentData: {
+                            nonce: JSON.stringify(additionalActionState.data),
+                        },
+                    };
+
+                    resolve(paymentPayload);
+                },
+                size: '05',
+                onError: (error: AdyenError) => reject(error),
+            });
+
+            additionalActionComponent.mount(`.checkout-view-header`);
+        });
+    }
+
+    private _getAdyenClient(): AdyenClient {
+        if (!this._adyenClient) {
+            throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
+        }
+
+        return this._adyenClient;
+    }
+
     private _getGooglePayOptions(options: PaymentInitializeOptions): GooglePayPaymentInitializeOptions {
         if (options.methodId === 'googlepayadyenv2' && options.googlepayadyenv2) {
             return options.googlepayadyenv2;
-        }
-
-        if (options.methodId === 'googlepayauthorizenet' && options.googlepayauthorizenet) {
-            return options.googlepayauthorizenet;
-        }
-
-        if (options.methodId === 'googlepaycheckoutcom' && options.googlepaycheckoutcom) {
-            return options.googlepaycheckoutcom;
-        }
-
-        if (options.methodId === 'googlepaybraintree' && options.googlepaybraintree) {
-            return options.googlepaybraintree;
-        }
-
-        if (options.methodId === 'googlepaystripe' && options.googlepaystripe) {
-            return options.googlepaystripe;
         }
 
         throw new InvalidArgumentError();

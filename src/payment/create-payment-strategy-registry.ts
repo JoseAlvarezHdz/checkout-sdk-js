@@ -36,7 +36,7 @@ import { CreditCardPaymentStrategy } from './strategies/credit-card';
 import { CreditCardRedirectPaymentStrategy } from './strategies/credit-card-redirect';
 import { CyberSourcePaymentStrategy } from './strategies/cybersource/index';
 import { ExternalPaymentStrategy } from './strategies/external';
-import { createGooglePayPaymentProcessor, GooglePayAdyenV2Initializer, GooglePayAuthorizeNetInitializer, GooglePayBraintreeInitializer, GooglePayCheckoutcomInitializer, GooglePayPaymentStrategy, GooglePayStripeInitializer } from './strategies/googlepay';
+import { createGooglePayPaymentProcessor, GooglePayAdyenPaymentStrategy, GooglePayAdyenV2Initializer, GooglePayAuthorizeNetInitializer, GooglePayBraintreeInitializer, GooglePayCheckoutcomInitializer, GooglePayPaymentStrategy, GooglePayStripeInitializer } from './strategies/googlepay';
 import { KlarnaPaymentStrategy, KlarnaScriptLoader } from './strategies/klarna';
 import { KlarnaV2PaymentStrategy, KlarnaV2ScriptLoader } from './strategies/klarnav2';
 import { LegacyPaymentStrategy } from './strategies/legacy';
@@ -94,17 +94,17 @@ export default function createPaymentStrategyRegistry(
     );
 
     registry.register(PaymentStrategyType.ADYENV2_GOOGLEPAY, () =>
-        new GooglePayPaymentStrategy(
+        new GooglePayAdyenPaymentStrategy(
             store,
             checkoutActionCreator,
-            paymentMethodActionCreator,
-            paymentStrategyActionCreator,
-            paymentActionCreator,
-            orderActionCreator,
             createGooglePayPaymentProcessor(
                 store,
                 new GooglePayAdyenV2Initializer()
-            )
+            ),
+            paymentMethodActionCreator,
+            paymentStrategyActionCreator,
+            paymentActionCreator,
+            orderActionCreator
         )
     );
 
