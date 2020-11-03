@@ -1,5 +1,5 @@
-
 import { CheckoutActionCreator, CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
+import { getBrowserInfo } from '../../../common/browser-info';
 import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
 import { bindDecorator as bind } from '../../../common/utility';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
@@ -12,6 +12,7 @@ import { AdyenPaymentMethodType } from '../adyenv2';
 import PaymentStrategy from '../payment-strategy';
 
 import { GooglePaymentData, PaymentMethodData } from './googlepay';
+import GooglePayAdyenV2Processor from './googlepay-adyenv2-processor';
 import GooglePayPaymentInitializeOptions from './googlepay-initialize-options';
 import GooglePayPaymentProcessor from './googlepay-payment-processor';
 
@@ -27,7 +28,8 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
         private _paymentStrategyActionCreator: PaymentStrategyActionCreator,
         private _paymentActionCreator: PaymentActionCreator,
         private _orderActionCreator: OrderActionCreator,
-        private _googlePayPaymentProcessor: GooglePayPaymentProcessor
+        private _googlePayPaymentProcessor: GooglePayPaymentProcessor,
+        private _googlePayAdyenV2Processor?: GooglePayAdyenV2Processor
     ) {}
 
     initialize(options: PaymentInitializeOptions): Promise<InternalCheckoutSelectors> {
@@ -93,6 +95,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             .then(() =>
                 this._store.dispatch(this._orderActionCreator.submitOrder({ useStoreCredit: payload.useStoreCredit }, options))
                     .then(() => this._store.dispatch(this._paymentActionCreator.submitPayment(this._getPayment())))
+                    .catch(error => this._googlePayAdyenV2Processor?._processAdditionalAction(error) || Promise.reject(error))
             );
     }
 
@@ -102,6 +105,8 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
 
     private _getGooglePayOptions(options: PaymentInitializeOptions): GooglePayPaymentInitializeOptions {
         if (options.methodId === 'googlepayadyenv2' && options.googlepayadyenv2) {
+            this._googlePayAdyenV2Processor?.initialize(options);
+
             return options.googlepayadyenv2;
         }
 
@@ -146,6 +151,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             nonce = JSON.stringify({
                 type: AdyenPaymentMethodType.GooglePay,
                 googlePayToken: paymentMethod.initializationData.nonce,
+                browser_info: getBrowserInfo(),
             });
         } else {
             nonce = paymentMethod.initializationData.nonce;
