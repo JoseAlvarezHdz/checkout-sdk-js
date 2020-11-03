@@ -1,6 +1,10 @@
 
+import { some } from 'lodash';
+
+import { Payment } from '../..';
 import { CheckoutActionCreator, CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
-import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType } from '../../../common/error/errors';
+import { getBrowserInfo } from '../../../common/browser-info';
+import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType, RequestError } from '../../../common/error/errors';
 import { bindDecorator as bind } from '../../../common/utility';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { OrderFinalizationNotRequiredError } from '../../../order/errors';
@@ -8,7 +12,7 @@ import PaymentActionCreator from '../../payment-action-creator';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
 import { PaymentInitializeOptions, PaymentRequestOptions } from '../../payment-request-options';
 import PaymentStrategyActionCreator from '../../payment-strategy-action-creator';
-import { AdyenPaymentMethodType } from '../adyenv2';
+import { AdyenAction, AdyenAdditionalAction, AdyenAdditionalActionState, AdyenClient, AdyenError, AdyenPaymentMethodType } from '../adyenv2';
 import PaymentStrategy from '../payment-strategy';
 
 import { GooglePaymentData, PaymentMethodData } from './googlepay';
@@ -19,6 +23,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
     private _googlePayOptions?: GooglePayPaymentInitializeOptions;
     private _methodId?: string;
     private _walletButton?: HTMLElement;
+    private _adyenClient?: AdyenClient;
 
     constructor(
         private _store: CheckoutStore,
@@ -47,6 +52,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
                     this._walletButton = walletButton;
                     this._walletButton.addEventListener('click', this._handleWalletButtonClick);
                 }
+                this._adyenClient = this._googlePayPaymentProcessor._adyenClient;
 
                 return this._store.getState();
             });
@@ -93,11 +99,49 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             .then(() =>
                 this._store.dispatch(this._orderActionCreator.submitOrder({ useStoreCredit: payload.useStoreCredit }, options))
                     .then(() => this._store.dispatch(this._paymentActionCreator.submitPayment(this._getPayment())))
+                    .catch(error => options?.methodId === 'googlepayadyenv2' ? this._processAdditionalAction(error) : Promise.reject() )
             );
     }
 
     finalize(): Promise<InternalCheckoutSelectors> {
         return Promise.reject(new OrderFinalizationNotRequiredError());
+    }
+
+    private async _processAdditionalAction(error: unknown): Promise<InternalCheckoutSelectors> {
+        if (!(error instanceof RequestError) || !some(error.body.errors, {code: 'additional_action_required'})) {
+            return Promise.reject(error);
+        }
+
+        try {
+            const payment = await this._handleAction(error.body.provider_data);
+
+            return await this._store.dispatch(this._paymentActionCreator.submitPayment({
+                ...payment,
+            }));
+        } catch (error) {
+            return this._processAdditionalAction(error);
+        }
+    }
+
+    private _handleAction(additionalAction: AdyenAdditionalAction): Promise<Payment> {
+        return new Promise((resolve, reject) => {
+            const adyenAction: AdyenAction = JSON.parse(additionalAction.action);
+            const additionalActionComponent = this._adyenClient?.createFromAction(adyenAction, {
+                onAdditionalDetails: (additionalActionState: AdyenAdditionalActionState) => {
+                    const paymentPayload = {
+                        methodId: adyenAction.paymentMethodType,
+                        paymentData:  {
+                            nonce: JSON.stringify(additionalActionState.data),
+                        },
+                    };
+
+                    resolve(paymentPayload);
+                },
+                onError: (error: AdyenError) => reject(error),
+            });
+
+            additionalActionComponent?.mount(`#${this._walletButton}`);
+        });
     }
 
     private _getGooglePayOptions(options: PaymentInitializeOptions): GooglePayPaymentInitializeOptions {
@@ -146,6 +190,7 @@ export default class GooglePayPaymentStrategy implements PaymentStrategy {
             nonce = JSON.stringify({
                 type: AdyenPaymentMethodType.GooglePay,
                 googlePayToken: paymentMethod.initializationData.nonce,
+                browser_info: getBrowserInfo(),
             });
         } else {
             nonce = paymentMethod.initializationData.nonce;

@@ -35,7 +35,8 @@ import createCheckoutButtonRegistry from './create-checkout-button-registry';
 export default function createCheckoutButtonInitializer(
     options?: CheckoutButtonInitializerOptions
 ): CheckoutButtonInitializer {
-    const host = options && options.host;
+    const host = options?.host;
+    const locale = options?.locale;
     const store = createCheckoutStore();
     const requestSender = createRequestSender({ host });
     const formPoster = createFormPoster({ host });
@@ -43,7 +44,7 @@ export default function createCheckoutButtonInitializer(
     return new CheckoutButtonInitializer(
         store,
         new CheckoutButtonStrategyActionCreator(
-            createCheckoutButtonRegistry(store, requestSender, formPoster, host),
+            createCheckoutButtonRegistry(store, requestSender, formPoster, host, locale),
             new PaymentMethodActionCreator(new PaymentMethodRequestSender(requestSender))
         )
     );

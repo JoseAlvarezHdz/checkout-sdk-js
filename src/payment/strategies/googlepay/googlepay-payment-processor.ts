@@ -8,11 +8,13 @@ import { RemoteCheckoutSynchronizationError } from '../../../remote-checkout/err
 import { ConsignmentActionCreator } from '../../../shipping';
 import { PaymentMethodInvalidError } from '../../errors';
 import PaymentMethodActionCreator from '../../payment-method-action-creator';
+import { AdyenClient, AdyenV2ScriptLoader } from '../adyenv2';
 
 import { ButtonColor, ButtonType, EnvironmentType, GooglePaymentData, GooglePayAddress, GooglePayClient, GooglePayInitializer, GooglePayPaymentDataRequestV2, GooglePaySDK, TokenizePayload } from './googlepay';
 import GooglePayScriptLoader from './googlepay-script-loader';
 
 export default class GooglePayPaymentProcessor {
+    _adyenClient?: AdyenClient;
     private _googlePayClient?: GooglePayClient;
     private _methodId?: string;
     private _paymentDataRequest?: GooglePayPaymentDataRequestV2;
@@ -24,7 +26,9 @@ export default class GooglePayPaymentProcessor {
         private _googlePayInitializer: GooglePayInitializer,
         private _billingAddressActionCreator: BillingAddressActionCreator,
         private _consignmentActionCreator: ConsignmentActionCreator,
-        private _requestSender: RequestSender
+        private _requestSender: RequestSender,
+        private _scriptLoader?: AdyenV2ScriptLoader,
+        private _locale?: string
     ) {}
 
     initialize(methodId: string): Promise<void> {
@@ -79,6 +83,19 @@ export default class GooglePayPaymentProcessor {
         return this._store.dispatch(this._paymentMethodActionCreator.loadPaymentMethod(methodId))
             .then(state => {
                 const paymentMethod = state.paymentMethods.getPaymentMethod(methodId);
+                const clientSideAuthentication = {
+                    key: '',
+                    value: '',
+                };
+
+                if (paymentMethod?.initializationData.originKey) {
+                    clientSideAuthentication.key = 'originKey';
+                    clientSideAuthentication.value = paymentMethod?.initializationData.originKey;
+                } else {
+                    clientSideAuthentication.key = 'clientKey';
+                    clientSideAuthentication.value = paymentMethod?.initializationData.clientKey;
+                }
+
                 const checkout = state.checkout.getCheckout();
                 const hasShippingAddress = !!state.shippingAddress.getShippingAddress();
 
@@ -95,9 +112,16 @@ export default class GooglePayPaymentProcessor {
                 return Promise.all([
                     this._googlePayScriptLoader.load(),
                     this._googlePayInitializer.initialize(checkout, paymentMethod, hasShippingAddress),
-                ]).then(([googlePay, paymentDataRequest]) => {
+                    this._scriptLoader?.load({
+                        environment: testMode ? 'TEST' : 'PRODUCTION',
+                        locale: this._locale,
+                        [clientSideAuthentication.key]: clientSideAuthentication.value,
+                        paymentMethodsResponse: paymentMethod.initializationData.paymentMethodsResponse,
+                    }),
+                ]).then(([googlePay, paymentDataRequest, adyenClient]) => {
                     this._googlePayClient = this._getGooglePayClient(googlePay, testMode);
                     this._paymentDataRequest = paymentDataRequest;
+                    this._adyenClient = adyenClient;
 
                     return this._googlePayClient.isReadyToPay({
                         allowedPaymentMethods: [

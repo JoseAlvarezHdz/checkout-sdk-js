@@ -1,10 +1,11 @@
 import { FormPoster } from '@bigcommerce/form-poster';
 import { RequestSender } from '@bigcommerce/request-sender';
-import { getScriptLoader } from '@bigcommerce/script-loader';
+import { getScriptLoader, getStylesheetLoader } from '@bigcommerce/script-loader';
 
 import { CheckoutActionCreator, CheckoutRequestSender, CheckoutStore } from '../checkout';
 import { Registry } from '../common/registry';
 import { ConfigActionCreator, ConfigRequestSender } from '../config';
+import { AdyenV2ScriptLoader } from '../payment/strategies/adyenv2';
 import { createAmazonPayV2PaymentProcessor } from '../payment/strategies/amazon-pay-v2';
 import { BraintreeScriptLoader, BraintreeSDKCreator } from '../payment/strategies/braintree';
 import { createGooglePayPaymentProcessor, GooglePayAdyenV2Initializer, GooglePayAuthorizeNetInitializer, GooglePayBraintreeInitializer, GooglePayCheckoutcomInitializer, GooglePayStripeInitializer } from '../payment/strategies/googlepay';
@@ -24,7 +25,8 @@ export default function createCheckoutButtonRegistry(
     store: CheckoutStore,
     requestSender: RequestSender,
     formPoster: FormPoster,
-    host?: string
+    host?: string,
+    locale?: string
 ): Registry<CheckoutButtonStrategy, CheckoutButtonMethodType> {
     const registry = new Registry<CheckoutButtonStrategy, CheckoutButtonMethodType>();
     const scriptLoader = getScriptLoader();
@@ -69,7 +71,9 @@ export default function createCheckoutButtonRegistry(
             checkoutActionCreator,
             createGooglePayPaymentProcessor(
                 store,
-                new GooglePayAdyenV2Initializer()
+                new GooglePayAdyenV2Initializer(),
+                new AdyenV2ScriptLoader(scriptLoader, getStylesheetLoader()),
+                locale
             )
         )
     );
