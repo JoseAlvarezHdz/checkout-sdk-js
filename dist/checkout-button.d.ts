@@ -302,6 +302,7 @@ declare class CheckoutButtonInitializer {
 
 declare interface CheckoutButtonInitializerOptions {
     host?: string;
+    locale?: string;
 }
 
 declare enum CheckoutButtonMethodType {
