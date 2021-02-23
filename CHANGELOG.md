@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.131.1-alpha.ea5573a5cd0c56fc2ed03c1c7fc22c1562633f9b](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.129.1...v1.131.1-alpha.ea5573a5cd0c56fc2ed03c1c7fc22c1562633f9b) (2021-02-23)
+
+
+### Features
+
+* **payment:** INT-3610 added Mollie Checkout ([ea5573a](https://github.com/bigcommerce/checkout-sdk-js/commit/ea5573a5cd0c56fc2ed03c1c7fc22c1562633f9b))
+* **payment:** PAYPAL-876 added preloader for APM when polling mechanism is running ([2d613b8](https://github.com/bigcommerce/checkout-sdk-js/commit/2d613b86e7b195c95ef7e1c0a607a58d11269eb9))
+* **payment:** PAYPAL-876 stop polling mechanism when error occurs ([79119b2](https://github.com/bigcommerce/checkout-sdk-js/commit/79119b23c791d1f6dda5046691576f032148ea0a))
+
+
+### Bug Fixes
+
+* **checkout:** INT-3665 3D Secure is declining the transaction in Braintree without any reason in some stores ([4d5528e](https://github.com/bigcommerce/checkout-sdk-js/commit/4d5528e0b7fdd3a141898b02d2ae2345af3ac624))
+* **common:** CHECKOUT-5612 Add isAccountCreationEnabled prop to StoreConfig ([74cc00e](https://github.com/bigcommerce/checkout-sdk-js/commit/74cc00e301185aed9acf7b0f42141f0dea035a20))
+* **payment:** INT-3611 Refresh the state in Braintree ([351bfe3](https://github.com/bigcommerce/checkout-sdk-js/commit/351bfe3fa11d7c945ab5593a27f4d33c0d2727d9))
+
 ## [1.131.0](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.130.1...v1.131.0) (2021-02-22)
 
 
