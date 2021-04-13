@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.138.1-alpha.8f6f2a1cef716386de329c5d052d570b43019ff6](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.132.0...v1.138.1-alpha.8f6f2a1cef716386de329c5d052d570b43019ff6) (2021-04-13)
+
+
+### Features
+
+* **checkout:** INT-3700 Load Bolt Scripts from different environments ([980e9be](https://github.com/bigcommerce/checkout-sdk-js/commit/980e9be9bd9d983dbb8a77ede24b1e6e09d8f5c7))
+* **payment:** INT-3702 added vaulted cc ([8f6f2a1](https://github.com/bigcommerce/checkout-sdk-js/commit/8f6f2a1cef716386de329c5d052d570b43019ff6))
+* **payment:** INT-3840 creating digital river strategy ([6062bbf](https://github.com/bigcommerce/checkout-sdk-js/commit/6062bbf9d78c6c9c9f5cadb8f0c6a619c8af6827))
+* **payment:** INT-3896 [Zip] it returns the nonce value when it's a referred payment ([d123551](https://github.com/bigcommerce/checkout-sdk-js/commit/d12355120b5ebef56de44dcb16c5c45f3a1dbcbc))
+* **payment:** INT-3905 creating execute for digital river and credit card ([2937cdd](https://github.com/bigcommerce/checkout-sdk-js/commit/2937cddde9a12ca4f6c1daecd6ade5047680ee6b))
+* **payment:** INT-3931 Add strategy for checkout.com with SEPA ([5538a3b](https://github.com/bigcommerce/checkout-sdk-js/commit/5538a3b80f13ff653142bcd598553195168834b1))
+* **payment:** INT-3947 Suppress PayPal and Klarna ([5fd75a0](https://github.com/bigcommerce/checkout-sdk-js/commit/5fd75a054169b12f677831b98a444a7fa8cb5165))
+* **payment:** INT-4021 Add strategy for iDeal APM ([752796b](https://github.com/bigcommerce/checkout-sdk-js/commit/752796bb109acadd118d94f51d04a3cc8cd1deb5))
+* **payment:** INT-4021 Test Cleanup ([61dfc25](https://github.com/bigcommerce/checkout-sdk-js/commit/61dfc257e6dbfb4b66661890403a96097a5f0f30))
+* **payment:** INT-4117 Support reload DR widget ([beb388a](https://github.com/bigcommerce/checkout-sdk-js/commit/beb388a233d64ee3532cf28ec4e33bd44095837f))
+* **payment:** INT-4117 Support reload DR widget + capsula changes ([bcfd2eb](https://github.com/bigcommerce/checkout-sdk-js/commit/bcfd2eb2b4a48220aafa1ffb3e1ef55f5b3e32d8))
+
+
+### Bug Fixes
+
+* **checkout:** INT-2546 Add ideal to document supported apms ([9c69506](https://github.com/bigcommerce/checkout-sdk-js/commit/9c695064612a01a7ce66d1a47a09c6b0e884715e))
+* **checkout:** INT-3571 Google Pay [StripeV3] - Billing address is missing ([df60da3](https://github.com/bigcommerce/checkout-sdk-js/commit/df60da31414942acb3d8f81941d7327898c4d442))
+* **payment:** CHECKOUT-5740 Post to and receive messages from www subdomain ([2e80137](https://github.com/bigcommerce/checkout-sdk-js/commit/2e801378f0c1b845e1b77f3394ec0d0f72a475d8))
+* **payment:** INT-3408 added masterpass SRC experiment ([933609a](https://github.com/bigcommerce/checkout-sdk-js/commit/933609ae27a938bfb3b9e3e976f5f9014d650731))
+* **payment:** INT-3408 refactor script loader ([f064474](https://github.com/bigcommerce/checkout-sdk-js/commit/f064474710c2dfc09f4a075a5f060874f31e843b))
+* **payment:** PAYMENTS-6642 Make Paypal overlay modal/new window aware ([#1088](https://github.com/bigcommerce/checkout-sdk-js/issues/1088)) ([326c961](https://github.com/bigcommerce/checkout-sdk-js/commit/326c9611b0a80c9c49d4278f4a240e23f7c18bdb))
+* **payment:** PAYPAL-965 Check that there are no inventory underselling or overselling issues in PayPal Commerce ([a0f4952](https://github.com/bigcommerce/checkout-sdk-js/commit/a0f49522c39d9d615904eac3a65174b3a64f9dc6))
+* **payment:** PAYPAL-970 add unit test for click handler on paypal checkout ([503e60b](https://github.com/bigcommerce/checkout-sdk-js/commit/503e60be649fd0757f729477c2e07fa2c831db44))
+* **payment:** PAYPAL-970 added loader test ([113d2f2](https://github.com/bigcommerce/checkout-sdk-js/commit/113d2f2821c94e27914ea4af4be64c7cd11e7a7b))
+* **payment:** PAYPAL-970 don't show loading indicator if checkout form hasn't passed validation ([c571f90](https://github.com/bigcommerce/checkout-sdk-js/commit/c571f9009e2e9804da6d3f67ef11040e35938caf))
+* **payment:** PAYPAL-970 fix linter error ([75b914f](https://github.com/bigcommerce/checkout-sdk-js/commit/75b914fb7eebaabd36fb33ff7f3f04a9d9ba6e4b))
+* **payment:** PAYPAL-970 small fixes after code review ([083e2c5](https://github.com/bigcommerce/checkout-sdk-js/commit/083e2c5419c5d2ec13e5e85aa6329e71720c01f2))
+
 ## [1.138.0](https://github.com/bigcommerce/checkout-sdk-js/compare/v1.137.3...v1.138.0) (2021-04-13)
 
 
