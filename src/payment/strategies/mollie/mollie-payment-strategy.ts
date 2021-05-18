@@ -1,9 +1,10 @@
-import { each, some } from 'lodash';
+import { each, isEmpty, some } from 'lodash';
 
 import { PaymentActionCreator } from '../..';
 import { CheckoutStore, InternalCheckoutSelectors } from '../../../checkout';
 import { getBrowserInfo } from '../../../common/browser-info';
 import { InvalidArgumentError, MissingDataError, MissingDataErrorType, NotInitializedError, NotInitializedErrorType, RequestError } from '../../../common/error/errors';
+import { HostedForm, HostedFormFactory } from '../../../hosted-form';
 import { OrderActionCreator, OrderRequestBody } from '../../../order';
 import { PaymentArgumentInvalidError } from '../../errors';
 import isVaultedInstrument from '../../is-vaulted-instrument';
@@ -27,7 +28,10 @@ export default class MolliePaymentStrategy implements PaymentStrategy {
     private _verificationCodeElement?: MollieElement;
     private _expiryDateElement?: MollieElement;
 
+    private _hostedForm?: HostedForm;
+    private _shouldRenderHostedForm?: boolean;
     constructor(
+        private _hostedFormFactory: HostedFormFactory,
         private _store: CheckoutStore,
         private _mollieScriptLoader: MollieScriptLoader,
         private _orderActionCreator: OrderActionCreator,
@@ -58,6 +62,10 @@ export default class MolliePaymentStrategy implements PaymentStrategy {
         }
 
         if (methodId === MolliePaymentMethodType.creditcard) {
+            if (this._isHostedPaymentFormEnabled(options?.methodId, options?.gatewayId) && this._isHostedFieldAvailable(options)) {
+                this._mountCardVerificationfields(options);
+            }
+
             this._mollieClient = await this._loadMollieJs(merchantId, storeConfig.storeProfile.storeLanguage, testMode);
             this._mountElements();
         }
@@ -80,7 +88,21 @@ export default class MolliePaymentStrategy implements PaymentStrategy {
                 await this._store.dispatch(this._orderActionCreator.submitOrder(order, options));
 
                 if (paymentData && isVaultedInstrument(paymentData)) {
-                    return this._store.dispatch(this._paymentActionCreator.submitPayment(payment));
+                    if (this._isHostedPaymentFormEnabled(payment.methodId, payment.gatewayId) && this._shouldRenderHostedForm) {
+                        const form = this._hostedForm;
+
+                        if (!form) {
+                            throw new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized);
+                        }
+
+                        try {
+                            await form.validate();
+
+                            return this._store.dispatch(this._paymentActionCreator.submitPayment(payment));
+                        } catch (error) {
+                            throw new Error(error.message);
+                        }
+                    }
                 }
 
                 const { token, error } = await this._getMollieClient().createToken();
@@ -133,6 +155,55 @@ export default class MolliePaymentStrategy implements PaymentStrategy {
         this.removeMollieComponents();
 
         return Promise.resolve(this._store.getState());
+    }
+
+    private _isHostedFieldAvailable(options?: PaymentInitializeOptions): boolean {
+        if (!options) {
+            throw new InvalidArgumentError();
+        }
+
+        return (options.mollie?.containerId) ? true : false;
+    }
+
+    private  _mountCardVerificationfields(options: any): Promise<any> {
+        if (isEmpty(options.mollie.form)) {
+            return Promise.resolve();
+        }
+
+        const formOptions = options.mollie.form;
+        const { config } = this._store.getState();
+        const { paymentSettings: { bigpayBaseUrl: host = '' } = {} } = config.getStoreConfig() || {};
+
+        if (!formOptions) {
+            throw new InvalidArgumentError();
+        }
+
+        const form = this._hostedFormFactory.create(host, formOptions);
+
+        return new Promise(async (resolve, reject) => {
+            if (options.mollie.form) {
+                try {
+                    await form.attach();
+                    this._shouldRenderHostedForm = true;
+                    this._hostedForm = form;
+                } catch (error) {
+                    reject(new NotInitializedError(NotInitializedErrorType.PaymentNotInitialized));
+                }
+            }
+
+            resolve(form);
+        });
+    }
+
+    private _isHostedPaymentFormEnabled(methodId?: string, gatewayId?: string): boolean {
+        if (!methodId) {
+            return false;
+        }
+
+        const { paymentMethods: { getPaymentMethodOrThrow } } = this._store.getState();
+        const paymentMethod = getPaymentMethodOrThrow(methodId, gatewayId);
+
+        return paymentMethod.config.isHostedFormEnabled === true;
     }
 
     private removeMollieComponents(): void {

@@ -636,6 +636,7 @@ export default function createPaymentStrategyRegistry(
 
     registry.register(PaymentStrategyType.MOLLIE, () =>
         new MolliePaymentStrategy(
+            hostedFormFactory,
             store,
             new MollieScriptLoader(scriptLoader),
             orderActionCreator,

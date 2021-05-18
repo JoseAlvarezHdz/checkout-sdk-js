@@ -8,6 +8,7 @@ import { PaymentActionCreator } from '../..';
 import { createCheckoutStore, CheckoutRequestSender, CheckoutStore, CheckoutValidator } from '../../../checkout';
 import { getCheckoutStoreState } from '../../../checkout/checkouts.mock';
 import { InvalidArgumentError } from '../../../common/error/errors';
+import { HostedFormFactory } from '../../../hosted-form';
 import { FinalizeOrderAction, OrderActionCreator, OrderActionType, OrderRequestSender } from '../../../order';
 import { createSpamProtection, PaymentHumanVerificationHandler } from '../../../spam-protection';
 import { PaymentArgumentInvalidError } from '../../errors';
@@ -34,6 +35,7 @@ describe('MolliePaymentStrategy', () => {
     let strategy: MolliePaymentStrategy;
     let mollieClient: MollieClient;
     let mollieElement: MollieElement;
+    let formFactory: HostedFormFactory;
 
     beforeEach(() => {
         mollieClient = getMollieClient();
@@ -83,7 +85,9 @@ describe('MolliePaymentStrategy', () => {
         jest.spyOn(mollieClient, 'createComponent')
             .mockReturnValue(mollieElement);
 
+        formFactory = new HostedFormFactory(store);
         strategy = new MolliePaymentStrategy(
+            formFactory,
             store,
             mollieScriptLoader,
             orderActionCreator,
