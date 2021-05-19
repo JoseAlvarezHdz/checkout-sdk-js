@@ -4468,6 +4468,10 @@ declare interface MolliePaymentInitializeOptions {
      * A set of styles required for the mollie components
      */
     styles: object;
+    /**
+     * Hosted Form Validation Options
+     */
+    form?: HostedFormOptions;
 }
 
 declare interface NonceGenerationError {
