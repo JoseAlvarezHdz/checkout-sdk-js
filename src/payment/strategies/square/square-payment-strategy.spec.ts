@@ -274,7 +274,7 @@ describe('SquarePaymentStrategy', () => {
 
                 setTimeout(() => {
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(undefined, 'nonce');
+                        callbacks.cardNonceResponseReceived([], 'nonce');
                     }
                 }, 0);
 
@@ -288,7 +288,7 @@ describe('SquarePaymentStrategy', () => {
                     promise = strategy.execute({ payment: { methodId: 'square' }, useStoreCredit: true });
 
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(undefined, 'nonce');
+                        callbacks.cardNonceResponseReceived([], 'nonce');
                     }
                 });
 
@@ -316,7 +316,7 @@ describe('SquarePaymentStrategy', () => {
             describe('when a failure happens receiving the nonce', () => {
                 beforeEach(() => {
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(undefined, 'nonce', cardData, undefined, undefined);
+                        callbacks.cardNonceResponseReceived([], 'nonce', cardData, undefined, undefined);
                     }
                 });
 
@@ -339,7 +339,7 @@ describe('SquarePaymentStrategy', () => {
                     strategy.execute(payload).catch(catchSpy);
 
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(getNonceGenerationErrors(), undefined, undefined, undefined, undefined);
+                        callbacks.cardNonceResponseReceived(getNonceGenerationErrors(), '', undefined, undefined, undefined);
                     }
                 });
 
@@ -369,7 +369,7 @@ describe('SquarePaymentStrategy', () => {
                     strategy.execute(payload).catch(catchSpy);
 
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(getNonceGenerationErrors(), undefined, undefined, undefined, undefined);
+                        callbacks.cardNonceResponseReceived(getNonceGenerationErrors(), '', undefined, undefined, undefined);
                     }
                 });
 
@@ -384,7 +384,7 @@ describe('SquarePaymentStrategy', () => {
                 beforeEach(async () => {
                     await strategy.initialize(initOptions);
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(undefined, 'nonce', cardData, undefined, undefined);
+                        callbacks.cardNonceResponseReceived([], 'nonce', cardData, undefined, undefined);
                     }
                 });
 
@@ -393,7 +393,7 @@ describe('SquarePaymentStrategy', () => {
 
                     const promise: Promise<InternalCheckoutSelectors> = strategy.execute(payloadVaulted, initOptions);
                     if (callbacks.cardNonceResponseReceived) {
-                        callbacks.cardNonceResponseReceived(undefined, 'nonce', cardData, undefined, undefined);
+                        callbacks.cardNonceResponseReceived([], 'nonce', cardData, undefined, undefined);
                     }
                     jest.spyOn(store.getState().paymentMethods, 'getPaymentMethod').mockReturnValue(getSquarePaymentInitializeOptions());
                     await promise.then(() => {

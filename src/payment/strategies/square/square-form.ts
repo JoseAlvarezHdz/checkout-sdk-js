@@ -2,6 +2,30 @@ export default interface SquarePaymentForm {
     build(): void;
     requestCardNonce(): void;
     setPostalCode(postalCode: string): void;
+    verifyBuyer(source: string, verificationDetails: VerificationDetails, callback: VerifyBuyerResponse ): void;
+}
+
+export type VerifyBuyerResponse = (errors: SquareVerificationError, verificationResult: SquareVerificationResult) => void;
+
+export interface SquareVerificationError {
+    type: string;
+    message: string;
+}
+
+export interface SquareVerificationResult {
+    token: string;
+    userChallenged: boolean;
+}
+
+export enum SquareIntent {
+    CHARGE = 'CHARGE',
+    STORE = 'STORE',
+}
+export interface VerificationDetails {
+    intent: string;
+    amount?: string;
+    currencyCode?: string;
+    billingContact?: Contact;
 }
 
 export type SquarePaymentFormConstructor = new(options: SquareFormOptions) => SquarePaymentForm;
@@ -36,9 +60,9 @@ export interface SquarePaymentRequest {
 }
 
 export interface NonceGenerationError {
-    type: string;
-    message: string;
-    field: string;
+    type?: string;
+    message?: string;
+    field?: string;
 }
 
 export interface CardData {
@@ -56,7 +80,7 @@ export interface Contact {
     email: string;
     country: string;
     countryName: string;
-    region: string;
+    region?: string;
     city: string;
     addressLines: string[];
     postalCode: string;
@@ -100,8 +124,8 @@ export interface SquareFormCallbacks {
     paymentFormLoaded?(form: SquarePaymentForm): void;
     unsupportedBrowserDetected?(): void;
     cardNonceResponseReceived?(
-        errors?: NonceGenerationError[],
-        nonce?: string,
+        errors: NonceGenerationError[],
+        nonce: string,
         cardData?: CardData,
         billingContact?: Contact,
         shippingContact?: Contact): void;
@@ -110,3 +134,16 @@ export interface SquareFormCallbacks {
 }
 
 export type SquareFormFactory = (options: SquareFormOptions) => SquarePaymentForm;
+
+export interface DeferredPromise {
+    resolve(resolution?: SquareNonceInstrument): void;
+    reject(reason?: any): void;
+}
+
+export interface SquareNonceInstrument {
+    nonce: string;
+    token: string;
+    shouldSaveInstrument?: boolean;
+    shouldSetAsDefaultInstrument?: boolean;
+    deviceSessionId?: string;
+}
